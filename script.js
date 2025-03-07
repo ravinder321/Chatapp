@@ -1,4 +1,4 @@
-const ws = new WebSocket('ws://localhost:3000'); // Connect to WebSocket server
+const ws = new WebSocket('wss://chatapp-idho.onrender.com'); // Connect to WebSocket server
 let username = ""; // Store the user's name
 const colors = {}; // Store user colors
 
