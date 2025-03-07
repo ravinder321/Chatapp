@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat</title>
+    <style>
+        /* Modern Reset & Variables */
+        :root {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --secondary: #06b6d4;
+            --background: #f3f4f6;
+            --card-bg: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --accent: #ec4899;
+            --border-radius: 12px;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+        }
+        
+        /* Main Container */
+        .container {
+            width: 95%;
+            max-width: 1000px;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        /* Header */
+        .header {
+            background: var(--primary);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .header h2 {
+            font-weight: 700;
+            letter-spacing: -0.025em;
+        }
+        
+        /* Content Area */
+        .content {
+            display: flex;
+            height: 70vh;
+        }
+        
+        /* Chat Section */
+        .chat-section {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        #welcomeMessage {
+            color: var(--primary);
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        #messages {
+            list-style: none;
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 10px;
+            background: var(--background);
+            border-radius: var(--border-radius);
+            margin-bottom: 15px;
+        }
+        
+        #messages li {
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: var(--border-radius);
+            background: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            position: relative;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        #messages li.self-message {
+            background: var(--primary);
+            color: white;
+            margin-left: auto;
+            max-width: 80%;
+        }
+        
+        .username {
+            font-weight: 600;
+            font-size: 0.85rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+        
+        /* Name Input Area */
+        .name-input-area {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        /* Input Area */
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        
+        input, button {
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+        }
+        
+        input {
+            flex-grow: 1;
+            background: var(--background);
+            color: var(--text-primary);
+            outline: none;
+            transition: box-shadow 0.3s ease;
+        }
+        
+        input:focus {
+            box-shadow: 0 0 0 2px var(--primary);
+        }
+        
+        input::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        button {
+            background: var(--primary);
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        button:active {
+            transform: translateY(1px);
+        }
+        
+        button:disabled {
+            background: var(--text-secondary);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Users Section */
+        .users-section {
+            flex: 1;
+            padding: 20px;
+            background: var(--background);
+        }
+        
+        .users-section h3 {
+            margin-bottom: 15px;
+            color: var(--text-primary);
+            font-weight: 600;
+            position: relative;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .users-section h3::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 3px;
+        }
+        
+        #usersList {
+            list-style: none;
+            padding: 0;
+            margin-top: 10px;
+        }
+        
+        #usersList li {
+            background: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: var(--border-radius);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            display: flex;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+        
+        #usersList li:hover {
+            transform: translateX(5px);
+        }
+        
+        .user-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            background: var(--accent);
+        }
+        
+        /* Animations */
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .content {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .chat-section {
+                border-right: none;
+                border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+                height: 60vh;
+            }
+            
+            .users-section {
+                padding: 15px;
+            }
+            
+            .name-input-area {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Name Popup Modal -->
+    <div id="namePopup" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+    ">
+        <div style="
+            background: white;
+            padding: 30px;
+            border-radius: var(--border-radius);
+            width: 90%;
+            max-width: 400px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        ">
+            <h3 style="margin-bottom: 20px; color: var(--primary);">Welcome to ChatConnect</h3>
+            <p style="margin-bottom: 15px; color: var(--text-secondary);">Please enter your name to join the chat</p>
+            <input type="text" id="popupNameInput" placeholder="Your name..." style="
+                width: 100%;
+                padding: 12px 16px;
+                border: 1px solid #e5e7eb;
+                border-radius: var(--border-radius);
+                margin-bottom: 15px;
+                font-size: 1rem;
+            ">
+            <button id="popupSubmitButton" style="
+                background: var(--primary);
+                color: white;
+                font-weight: 600;
+                padding: 12px 24px;
+                border: none;
+                border-radius: var(--border-radius);
+                cursor: pointer;
+                transition: all 0.3s ease;
+                width: 100%;
+            ">Join Chat</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h2>ChatConnect</h2>
+        </div>
+        
+        <!-- Content Area -->
+        <div class="content">
+            <!-- Chat Section -->
+            <div class="chat-section">
+                <div class="name-input-area" id="nameInputArea">
+                    <input type="text" id="nameInput" placeholder="Enter your name..." />
+                    <button onclick="setUsername()">Start Chat</button>
+                </div>
+                <h3 id="welcomeMessage"></h3>
+                <ul id="messages">
+                    <!-- Messages will be dynamically added here -->
+                </ul>
+                <div class="input-area">
+                    <input type="text" id="messageInput" placeholder="Type your message..." disabled onkeypress="handleKeyPress(event)" />
+                    <button onclick="sendMessage()" id="sendButton" disabled>Send</button>
+                </div>
+            </div>
+            
+            <!-- Active Users Section -->
+            <div class="users-section">
+                <h3>Active Users</h3>
+                <ul id="usersList">
+                    <!-- Users will be dynamically added here -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    
+    <!-- Name Popup Script -->
+    <script>
+        // Get references to popup elements
+        const namePopup = document.getElementById('namePopup');
+        const popupNameInput = document.getElementById('popupNameInput');
+        const popupSubmitButton = document.getElementById('popupSubmitButton');
+        const nameInputArea = document.getElementById('nameInputArea');
+        
+        // Modify the original setUsername function to hide the name input area
+        const originalSetUsername = window.setUsername;
+        window.setUsername = function() {
+            // Call the original function
+            if (originalSetUsername) {
+                originalSetUsername();
+            }
+            
+            // Hide the name input area
+            if (nameInputArea) {
+                nameInputArea.style.display = 'none';
+            }
+        };
+        
+        // Handle popup submit
+        popupSubmitButton.addEventListener('click', function() {
+            const name = popupNameInput.value.trim();
+            if (name) {
+                // Set the name in the original name input
+                document.getElementById('nameInput').value = name;
+                
+                // Call the modified setUsername function
+                setUsername();
+                
+                // Hide the popup
+                namePopup.style.display = 'none';
+            }
+        });
+        
+        // Allow pressing Enter to submit
+        popupNameInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                popupSubmitButton.click();
+            }
+        });
+        
+        // Auto-focus the name input when the popup appears
+        window.addEventListener('load', function() {
+            popupNameInput.focus();
+        });
+    </script>
+</body>
+</html>
